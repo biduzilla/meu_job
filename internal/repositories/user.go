@@ -16,6 +16,16 @@ type UserRepository struct {
 	db *sql.DB
 }
 
+type UserRepositoryInterface interface {
+	GetByCodAndEmail(cod int, email string) (*models.User, error)
+	GetByID(id int64) (*models.User, error)
+	GetByEmail(email string) (*models.User, error)
+	Insert(tx *sql.Tx, user *models.User) error
+	UpdateCodByEmail(tx *sql.Tx, user *models.User) error
+	Update(tx *sql.Tx, user *models.User) error
+	Delete(tx *sql.Tx, idUser int64) error
+}
+
 const SqlSelectUser = `
 	SELECT 
 		id, 
@@ -220,17 +230,17 @@ func (r *UserRepository) Update(tx *sql.Tx, user *models.User) error {
 	return nil
 }
 
-func (r *UserRepository) Delete(tx *sql.Tx, user *models.User) error {
+func (r *UserRepository) Delete(tx *sql.Tx, idUser int64) error {
 	query := `
 	UPDATE users set
 	deleted = true
-	where id = $1 AND version = $2
+	where id = $1
 	`
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	result, err := tx.ExecContext(ctx, query, user.ID, user.Version)
+	result, err := tx.ExecContext(ctx, query, idUser)
 	if err != nil {
 		return err
 	}
