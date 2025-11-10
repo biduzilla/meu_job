@@ -3,7 +3,6 @@ package models
 import (
 	"errors"
 	"meu_job/utils/validator"
-	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -12,15 +11,13 @@ var AnonymousUser = &User{}
 
 type User struct {
 	ID        int64
-	CreatedAt time.Time
 	Name      string
 	Email     string
 	Password  password
 	Phone     string
 	Activated bool
 	Cod       int
-	Version   int
-	Deleted   bool
+	BaseModel
 }
 
 type UserDTO struct {

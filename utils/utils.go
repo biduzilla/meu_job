@@ -2,8 +2,29 @@ package utils
 
 import (
 	"database/sql"
+	"encoding/json"
+	"maps"
 	"math/rand"
+	"net/http"
 )
+
+type Envelope map[string]any
+
+func WriteJSON(w http.ResponseWriter, status int, data Envelope, headers http.Header) error {
+	js, err := json.MarshalIndent(data, "", "\t")
+	if err != nil {
+		return err
+	}
+
+	js = append(js, '\n')
+
+	maps.Copy(w.Header(), headers)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	w.Write(js)
+	return nil
+}
 
 func GenerateRandomCode() int {
 	return rand.Intn(900000) + 100000
