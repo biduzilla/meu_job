@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"meu_job/internal/services"
 	"meu_job/utils"
 	"meu_job/utils/errors"
@@ -10,6 +11,17 @@ import (
 type Handler struct {
 	User    UserHandlerInterface
 	Service *services.Service
+}
+
+func NewHandler(
+	db *sql.DB,
+	errRsp errors.ErrorResponseInterface,
+) *Handler {
+	s := services.New(db)
+
+	return &Handler{
+		User: NewUserHandler(s.User),
+	}
 }
 
 func respond(
