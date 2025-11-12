@@ -41,6 +41,10 @@ type ErrorResponseInterface interface {
 	HandlerErrorResponse(w http.ResponseWriter, r *http.Request, err error, v *validator.Validator)
 }
 
+func NewErrorResponse(logger *jsonlog.Logger) *ErrorResponse {
+	return &ErrorResponse{logger: logger}
+}
+
 func (e *ErrorResponse) HandlerErrorResponse(w http.ResponseWriter, r *http.Request, err error, v *validator.Validator) {
 	switch {
 	case errors.Is(err, ErrInvalidData):

@@ -28,7 +28,7 @@ func NewAuthService(userService UserServiceInterface, config config.Config) *Aut
 	}
 }
 
-func (s *AuthService) Long(
+func (s *AuthService) Login(
 	v *validator.Validator,
 	email,
 	password string,

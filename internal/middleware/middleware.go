@@ -28,14 +28,24 @@ var (
 
 type Middleware struct {
 	errRsp      errors.ErrorResponseInterface
-	userService services.UserService
+	userService services.UserServiceInterface
 	authService services.AuthServiceInterface
 	config      config.Config
 }
 
+type MiddlewareInterface interface {
+	Metrics(next http.Handler) http.Handler
+	EnableCORS(next http.Handler) http.Handler
+	RequireAuthenticatedUser(next http.Handler) http.Handler
+	RequireActivatedUser(next http.Handler) http.Handler
+	Authenticate(next http.Handler) http.Handler
+	RateLimit(next http.Handler) http.Handler
+	RecoverPanic(next http.Handler) http.Handler
+}
+
 func New(
 	errRsp errors.ErrorResponseInterface,
-	userService services.UserService,
+	userService services.UserServiceInterface,
 	authService services.AuthServiceInterface,
 	config config.Config,
 ) *Middleware {
