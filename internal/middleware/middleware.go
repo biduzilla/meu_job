@@ -3,11 +3,16 @@ package middleware
 import (
 	"expvar"
 	"fmt"
+	"meu_job/internal/api"
 	"meu_job/internal/config"
+	"meu_job/internal/models"
 	"meu_job/internal/services"
 	"meu_job/utils/errors"
+	"meu_job/utils/validator"
 	"net"
 	"net/http"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -24,19 +29,153 @@ var (
 type Middleware struct {
 	errRsp      errors.ErrorResponseInterface
 	userService services.UserService
+	authService services.AuthServiceInterface
 	config      config.Config
 }
 
 func New(
 	errRsp errors.ErrorResponseInterface,
 	userService services.UserService,
+	authService services.AuthServiceInterface,
 	config config.Config,
 ) *Middleware {
 	return &Middleware{
 		errRsp:      errRsp,
 		userService: userService,
+		authService: authService,
 		config:      config,
 	}
+}
+
+type metricsResponseWriter struct {
+	wrapped       http.ResponseWriter
+	statusCode    int
+	headerWritten bool
+}
+
+func newMetricsResponseWriter(w http.ResponseWriter) *metricsResponseWriter {
+	return &metricsResponseWriter{
+		wrapped:    w,
+		statusCode: http.StatusOK,
+	}
+}
+
+func (mw *metricsResponseWriter) Header() http.Header {
+	return mw.wrapped.Header()
+}
+
+func (mw *metricsResponseWriter) WriteHeader(statusCode int) {
+	mw.wrapped.WriteHeader(statusCode)
+	if !mw.headerWritten {
+		mw.statusCode = statusCode
+		mw.headerWritten = true
+	}
+}
+
+func (mw *metricsResponseWriter) Write(b []byte) (int, error) {
+	mw.headerWritten = true
+	return mw.wrapped.Write(b)
+}
+
+func (mw *metricsResponseWriter) Unwrap() http.ResponseWriter {
+	return mw.wrapped
+}
+
+func (m *Middleware) Metrics(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		totalRequestsReceived.Add(1)
+
+		mw := newMetricsResponseWriter(w)
+		next.ServeHTTP(mw, r)
+
+		totalResponsesSent.Add(1)
+		totalResponsesSentByStatus.Add(strconv.Itoa(mw.statusCode), 1)
+
+		duration := time.Since(start).Microseconds()
+		totalProcessingTimeMicroseconds.Add(duration)
+	})
+}
+
+func (m *Middleware) EnableCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Vary", "Origin")
+		w.Header().Add("Vary", "Access-Control-Request-Method")
+		origin := r.Header.Get("Origin")
+		if origin != "" {
+			for i := range m.config.CORS.TrustedOrigins {
+				if origin == m.config.CORS.TrustedOrigins[i] {
+					w.Header().Set("Access-Control-Allow-Origin", origin)
+					if r.Method == http.MethodOptions && r.Header.Get("Access-Control-Request-Method") != "" {
+						w.Header().Set("Access-Control-Allow-Methods", "OPTIONS, PUT, PATCH, DELETE")
+						w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
+						w.WriteHeader(http.StatusOK)
+						return
+					}
+					break
+				}
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (m *Middleware) RequireAuthenticatedUser(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := api.ContextGetUser(r)
+		if user.IsAnonymous() {
+			m.errRsp.AuthenticationRequiredResponse(w, r)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (m *Middleware) RequireActivatedUser(next http.Handler) http.Handler {
+	return m.RequireAuthenticatedUser(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := api.ContextGetUser(r)
+		if !user.Activated {
+			m.errRsp.InactiveAccountResponse(w, r)
+			return
+		}
+		next.ServeHTTP(w, r)
+	}))
+}
+
+func (m *Middleware) Authenticate(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Vary", "Authorization")
+		authorizationHeader := r.Header.Get("Authorization")
+
+		if authorizationHeader == "" {
+			r = api.ContextSetUser(r, models.AnonymousUser)
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		headerParts := strings.Split(authorizationHeader, " ")
+		if len(headerParts) != 2 || headerParts[0] != "Bearer" {
+			m.errRsp.InvalidCredentialsResponse(w, r)
+			return
+		}
+
+		token := headerParts[1]
+		username, err := m.authService.ExtractUsername(token)
+		if err != nil {
+			m.errRsp.InvalidAuthenticationTokenResponse(w, r)
+			return
+		}
+
+		v := validator.New()
+		user, err := m.userService.GetUserByEmail(username, v)
+		if err != nil {
+			m.errRsp.HandlerErrorResponse(w, r, err, v)
+			return
+		}
+
+		r = api.ContextSetUser(r, user)
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (m *Middleware) RateLimit(next http.Handler) http.Handler {
