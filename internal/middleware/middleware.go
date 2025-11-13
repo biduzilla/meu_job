@@ -11,6 +11,7 @@ import (
 	"meu_job/utils/validator"
 	"net"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -145,6 +146,17 @@ func (m *Middleware) RequireActivatedUser(next http.Handler) http.Handler {
 	return m.RequireAuthenticatedUser(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user := api.ContextGetUser(r)
 		if !user.Activated {
+			m.errRsp.InactiveAccountResponse(w, r)
+			return
+		}
+		next.ServeHTTP(w, r)
+	}))
+}
+
+func (m *Middleware) RequirePermission(roles []models.Role, next http.Handler) http.Handler {
+	return m.RequireActivatedUser(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := api.ContextGetUser(r)
+		if !slices.Contains(roles, user.Role) {
 			m.errRsp.InactiveAccountResponse(w, r)
 			return
 		}

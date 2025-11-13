@@ -3,11 +3,19 @@ package models
 import (
 	"errors"
 	"meu_job/utils/validator"
+	"strings"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
 var AnonymousUser = &User{}
+
+type Role int8
+
+const (
+	USER Role = iota + 1
+	BUSINESS
+)
 
 type User struct {
 	ID        int64
@@ -17,6 +25,7 @@ type User struct {
 	Phone     string
 	Activated bool
 	Cod       int
+	Role
 	BaseModel
 }
 
@@ -37,6 +46,28 @@ type UserSaveDTO struct {
 type password struct {
 	Plaintext *string
 	Hash      []byte
+}
+
+func (r Role) String() string {
+	switch r {
+	case USER:
+		return "USER"
+	case BUSINESS:
+		return "BUSINESS"
+	default:
+		return "UNKNOWN"
+	}
+}
+
+func ParseRole(s string) Role {
+	switch strings.ToUpper(s) {
+	case "USER":
+		return USER
+	case "BUSINESS":
+		return BUSINESS
+	default:
+		return 0
+	}
 }
 
 func (u *User) IsAnonymous() bool {
