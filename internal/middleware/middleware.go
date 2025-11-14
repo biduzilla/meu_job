@@ -3,8 +3,8 @@ package middleware
 import (
 	"expvar"
 	"fmt"
-	"meu_job/internal/api"
 	"meu_job/internal/config"
+	"meu_job/internal/contexts"
 	"meu_job/internal/models"
 	"meu_job/internal/services"
 	"meu_job/utils/errors"
@@ -133,7 +133,7 @@ func (m *Middleware) EnableCORS(next http.Handler) http.Handler {
 
 func (m *Middleware) RequireAuthenticatedUser(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user := api.ContextGetUser(r)
+		user := contexts.ContextGetUser(r)
 		if user.IsAnonymous() {
 			m.errRsp.AuthenticationRequiredResponse(w, r)
 			return
@@ -144,7 +144,7 @@ func (m *Middleware) RequireAuthenticatedUser(next http.Handler) http.Handler {
 
 func (m *Middleware) RequireActivatedUser(next http.Handler) http.Handler {
 	return m.RequireAuthenticatedUser(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user := api.ContextGetUser(r)
+		user := contexts.ContextGetUser(r)
 		if !user.Activated {
 			m.errRsp.InactiveAccountResponse(w, r)
 			return
@@ -155,7 +155,7 @@ func (m *Middleware) RequireActivatedUser(next http.Handler) http.Handler {
 
 func (m *Middleware) RequirePermission(roles []models.Role, next http.Handler) http.Handler {
 	return m.RequireActivatedUser(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user := api.ContextGetUser(r)
+		user := contexts.ContextGetUser(r)
 		if !slices.Contains(roles, user.Role) {
 			m.errRsp.InactiveAccountResponse(w, r)
 			return
@@ -170,7 +170,7 @@ func (m *Middleware) Authenticate(next http.Handler) http.Handler {
 		authorizationHeader := r.Header.Get("Authorization")
 
 		if authorizationHeader == "" {
-			r = api.ContextSetUser(r, models.AnonymousUser)
+			r = contexts.ContextSetUser(r, models.AnonymousUser)
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -195,7 +195,7 @@ func (m *Middleware) Authenticate(next http.Handler) http.Handler {
 			return
 		}
 
-		r = api.ContextSetUser(r, user)
+		r = contexts.ContextSetUser(r, user)
 		next.ServeHTTP(w, r)
 	})
 }
