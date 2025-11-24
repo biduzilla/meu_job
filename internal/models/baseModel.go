@@ -6,6 +6,6 @@ type BaseModel struct {
 	Version   int
 	Deleted   bool
 	CreatedAt time.Time
-	UpdateAt  time.Time
-	UpdateBy  int64
+	UpdatedAt *time.Time
+	UpdatedBy *int64
 }
