@@ -21,9 +21,11 @@ type UserHandlerInterface interface {
 
 func NewUserHandler(
 	user services.UserServiceInterface,
+	errRsp e.ErrorResponseInterface,
 ) *UserHandler {
 	return &UserHandler{
-		user: user,
+		user:   user,
+		errRsp: errRsp,
 	}
 }
 

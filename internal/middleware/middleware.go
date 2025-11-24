@@ -240,16 +240,14 @@ func (m *Middleware) RateLimit(next http.Handler) http.Handler {
 						m.config.Limiter.Burst,
 					),
 				}
-
-				clients[ip].lastSeen = time.Now()
-				if !clients[ip].limiter.Allow() {
-					mu.Unlock()
-					m.errRsp.RateLimitExceededResponse(w, r)
-					return
-				}
-				mu.Unlock()
-
 			}
+			clients[ip].lastSeen = time.Now()
+			if !clients[ip].limiter.Allow() {
+				mu.Unlock()
+				m.errRsp.RateLimitExceededResponse(w, r)
+				return
+			}
+			mu.Unlock()
 		}
 		next.ServeHTTP(w, r)
 	})

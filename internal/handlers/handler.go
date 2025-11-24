@@ -23,8 +23,9 @@ func NewHandler(
 	s := services.New(db, config)
 
 	return &Handler{
-		User: NewUserHandler(s.User),
-		Auth: NewAuthHandler(s.Auth, errRsp),
+		Service: s,
+		User:    NewUserHandler(s.User, errRsp),
+		Auth:    NewAuthHandler(s.Auth, errRsp),
 	}
 }
 
