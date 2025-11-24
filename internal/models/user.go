@@ -66,7 +66,7 @@ func ParseRole(s string) Role {
 	case "BUSINESS":
 		return BUSINESS
 	default:
-		return 0
+		return USER
 	}
 }
 
