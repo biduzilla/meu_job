@@ -40,6 +40,48 @@ const SqlSelectUser = `
 	FROM users
 `
 
+const SQLSelectDataUser = `
+		u.id as user_id,  
+		u.name as user_name, 
+		u.phone as user_phone, 
+		u.email as user_email, 
+		u.cod as user_cod, 
+		u.password_hash, 
+		u.activated, 
+		u.version as user_version,
+		u.created_by as user_created_by,
+		u.created_at as user.created_at,
+		u.updated_by as user_updated_by,
+		u.updated_at as user_updated_at 
+	`
+
+func ScanUser(r *sql.Row, user *models.User) error {
+	err := r.Scan(
+		&user.ID,
+		&user.Name,
+		&user.Phone,
+		&user.Email,
+		&user.Cod,
+		&user.Password.Hash,
+		&user.Activated,
+		&user.Version,
+		&user.CreatedBy,
+		&user.CreatedAt,
+		&user.UpdatedBy,
+		&user.UpdatedAt,
+	)
+
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return e.ErrRecordNotFound
+		default:
+			return err
+		}
+	}
+	return nil
+}
+
 func NewUserRepository(
 	db *sql.DB,
 ) *UserRepository {

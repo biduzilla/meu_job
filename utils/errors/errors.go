@@ -14,6 +14,7 @@ var (
 	ErrEditConflict          = errors.New("edit conflict")
 	ErrDuplicateEmail        = errors.New("duplicate email")
 	ErrDuplicateName         = errors.New("duplicate name")
+	ErrDuplicateCNPJ         = errors.New("duplicate CNPJ")
 	ErrDuplicatePhone        = errors.New("duplicate phone")
 	ErrInvalidData           = errors.New("invalid data")
 	ErrInvalidCredentials    = errors.New("invalid authentication credentials")
@@ -59,6 +60,10 @@ func (e *ErrorResponse) HandlerErrorResponse(w http.ResponseWriter, r *http.Requ
 
 	case errors.Is(err, ErrDuplicateName) && v != nil:
 		v.AddError("name", "a register with this name already exists")
+		e.FailedValidationResponse(w, r, v.Errors)
+
+	case errors.Is(err, ErrDuplicateCNPJ) && v != nil:
+		v.AddError("cnpj", "a register with this cnpj already exists")
 		e.FailedValidationResponse(w, r, v.Errors)
 
 	case errors.Is(err, ErrDuplicatePhone) && v != nil:

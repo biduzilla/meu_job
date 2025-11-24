@@ -12,7 +12,7 @@ type Business struct {
 	CNPJ  string
 	Email string
 	Phone string
-	User  User
+	User  *User
 	BaseModel
 }
 
@@ -58,7 +58,7 @@ func (b *BusinessDTO) ToModel() *Business {
 	}
 
 	if b.User != nil {
-		model.User = *b.User.ToModel()
+		model.User = b.User.ToModel()
 	}
 	return model
 }
