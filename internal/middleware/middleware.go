@@ -42,6 +42,7 @@ type MiddlewareInterface interface {
 	Authenticate(next http.Handler) http.Handler
 	RateLimit(next http.Handler) http.Handler
 	RecoverPanic(next http.Handler) http.Handler
+	RequirePermission(roles []models.Role) func(http.Handler) http.Handler
 }
 
 func New(
@@ -153,15 +154,19 @@ func (m *Middleware) RequireActivatedUser(next http.Handler) http.Handler {
 	}))
 }
 
-func (m *Middleware) RequirePermission(roles []models.Role, next http.Handler) http.Handler {
-	return m.RequireActivatedUser(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user := contexts.ContextGetUser(r)
-		if !slices.Contains(roles, user.Role) {
-			m.errRsp.InactiveAccountResponse(w, r)
-			return
-		}
-		next.ServeHTTP(w, r)
-	}))
+func (m *Middleware) RequirePermission(roles []models.Role) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return m.RequireActivatedUser(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			user := contexts.ContextGetUser(r)
+
+			if !slices.Contains(roles, user.Role) {
+				m.errRsp.InactiveAccountResponse(w, r)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		}))
+	}
 }
 
 func (m *Middleware) Authenticate(next http.Handler) http.Handler {

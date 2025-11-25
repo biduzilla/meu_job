@@ -24,6 +24,16 @@ type BusinessHandlerInterface interface {
 	Delete(w http.ResponseWriter, r *http.Request)
 }
 
+func NewBusinessHandler(
+	business services.BusinessServiceInterface,
+	errRsp e.ErrorResponseInterface,
+) *businessHandler {
+	return &businessHandler{
+		business: business,
+		errRsp:   errRsp,
+	}
+}
+
 func (h *businessHandler) FindAll(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		name, cnpj, email string
