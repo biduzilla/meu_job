@@ -29,6 +29,19 @@ func NewHandler(
 	}
 }
 
+func parseID(
+	w http.ResponseWriter,
+	r *http.Request,
+	errRsp errors.ErrorResponseInterface,
+) (int64, bool) {
+	id, err := utils.ReadIntPathVariable(r, "id")
+	if err != nil {
+		errRsp.BadRequestResponse(w, r, err)
+		return 0, false
+	}
+	return id, true
+}
+
 func respond(
 	w http.ResponseWriter,
 	r *http.Request,

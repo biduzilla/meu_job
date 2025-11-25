@@ -13,12 +13,12 @@ import (
 	"github.com/lib/pq"
 )
 
-type BusinessRepository struct {
+type businessRepository struct {
 	db *sql.DB
 }
 
-func NewBusinessRepository(db *sql.DB) *BusinessRepository {
-	return &BusinessRepository{
+func NewBusinessRepository(db *sql.DB) *businessRepository {
+	return &businessRepository{
 		db: db,
 	}
 }
@@ -33,8 +33,8 @@ type BusinessRepositoryInterface interface {
 		f filters.Filters,
 	) ([]*models.Business, filters.Metadata, error)
 	Insert(business *models.Business, userID int64, tx *sql.Tx) error
-	Update(business *models.Business, userID int64) error
-	Delete(id, userID int64) error
+	Update(business *models.Business, userID int64, tx *sql.Tx) error
+	Delete(id, userID int64, tx *sql.Tx) error
 }
 
 const SQLSelectDataBusiness = `
@@ -118,7 +118,7 @@ func scanBusiness(r *sql.Row, business *models.Business) error {
 	return nil
 }
 
-func (r *BusinessRepository) GetByID(id int64, userID int64) (*models.Business, error) {
+func (r *businessRepository) GetByID(id int64, userID int64) (*models.Business, error) {
 	query := fmt.Sprintf(`
 	select 
 		%s,
@@ -148,7 +148,7 @@ func (r *BusinessRepository) GetByID(id int64, userID int64) (*models.Business, 
 	return &business, nil
 }
 
-func (r *BusinessRepository) GetAll(
+func (r *businessRepository) GetAll(
 	name,
 	email,
 	cnpj string,
@@ -215,7 +215,7 @@ func (r *BusinessRepository) GetAll(
 	return businessList, metaData, nil
 }
 
-func (r *BusinessRepository) Insert(business *models.Business, userID int64, tx *sql.Tx) error {
+func (r *businessRepository) Insert(business *models.Business, userID int64, tx *sql.Tx) error {
 	query := `
 	insert into(
 		name,
@@ -268,7 +268,7 @@ func (r *BusinessRepository) Insert(business *models.Business, userID int64, tx 
 	return nil
 }
 
-func (r *BusinessRepository) Update(business *models.Business, userID int64) error {
+func (r *businessRepository) Update(business *models.Business, userID int64, tx *sql.Tx) error {
 	query := `
 	update business
 	set
@@ -303,7 +303,7 @@ func (r *BusinessRepository) Update(business *models.Business, userID int64) err
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	err := r.db.QueryRowContext(ctx, query, args...).Scan(
+	err := tx.QueryRowContext(ctx, query, args...).Scan(
 		&business.Version,
 	)
 
@@ -326,7 +326,7 @@ func (r *BusinessRepository) Update(business *models.Business, userID int64) err
 	return nil
 }
 
-func (r *BusinessRepository) Delete(id, userID int64) error {
+func (r *businessRepository) Delete(id, userID int64, tx *sql.Tx) error {
 	query := `
 	UPDATE business
 	SET
@@ -340,7 +340,7 @@ func (r *BusinessRepository) Delete(id, userID int64) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	result, err := r.db.ExecContext(ctx, query, id, userID)
+	result, err := tx.ExecContext(ctx, query, id, userID)
 
 	if err != nil {
 		return err

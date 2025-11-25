@@ -10,7 +10,7 @@ import (
 	"meu_job/utils/validator"
 )
 
-type BusinessService struct {
+type businessService struct {
 	business repositories.BusinessRepositoryInterface
 	db       *sql.DB
 }
@@ -32,14 +32,14 @@ type BusinessServiceInterface interface {
 func NewBusinessService(
 	businessRepository repositories.BusinessRepositoryInterface,
 	db *sql.DB,
-) *BusinessService {
-	return &BusinessService{
+) *businessService {
+	return &businessService{
 		business: businessRepository,
 		db:       db,
 	}
 }
 
-func (s *BusinessService) Save(b *models.Business, v *validator.Validator) error {
+func (s *businessService) Save(b *models.Business, v *validator.Validator) error {
 	return utils.RunInTx(s.db, func(tx *sql.Tx) error {
 		b.ValidateBusiness(v)
 		if !v.Valid() {
@@ -50,11 +50,11 @@ func (s *BusinessService) Save(b *models.Business, v *validator.Validator) error
 	})
 }
 
-func (s *BusinessService) FindByID(id, userID int64) (*models.Business, error) {
+func (s *businessService) FindByID(id, userID int64) (*models.Business, error) {
 	return s.business.GetByID(id, userID)
 }
 
-func (s *BusinessService) FindAll(
+func (s *businessService) FindAll(
 	name,
 	email,
 	cnpj string,
@@ -64,18 +64,18 @@ func (s *BusinessService) FindAll(
 	return s.business.GetAll(name, email, cnpj, userID, f)
 }
 
-func (s *BusinessService) Update(b *models.Business, v *validator.Validator) error {
+func (s *businessService) Update(b *models.Business, v *validator.Validator) error {
 	return utils.RunInTx(s.db, func(tx *sql.Tx) error {
 		if b.ValidateBusiness(v); !v.Valid() {
 			return errors.ErrInvalidData
 		}
 
-		return s.business.Update(b, b.User.ID)
+		return s.business.Update(b, b.User.ID, tx)
 	})
 }
 
-func (s *BusinessService) Delete(id, userID int64) error {
+func (s *businessService) Delete(id, userID int64) error {
 	return utils.RunInTx(s.db, func(tx *sql.Tx) error {
-		return s.business.Delete(id, userID)
+		return s.business.Delete(id, userID, tx)
 	})
 }
