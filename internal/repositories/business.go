@@ -251,13 +251,15 @@ func (r *businessRepository) Insert(business *models.Business, userID int64, tx 
 	)
 
 	if err != nil {
-		if pqErr, ok := err.(*pq.Error); ok {
+		if errors.Is(err, sql.ErrNoRows) {
+			return e.ErrEditConflict
+		} else if pqErr, ok := err.(*pq.Error); ok {
 			switch pqErr.Constraint {
-			case "unique_user_business_name":
+			case "unique_user_business_name_deleted":
 				return e.ErrDuplicateName
-			case "unique_user_business_cnpj":
+			case "unique_user_business_cnpj_deleted":
 				return e.ErrDuplicateCNPJ
-			case "unique_user_business_email":
+			case "unique_user_business_email_deleted":
 				return e.ErrDuplicateEmail
 			}
 		}
@@ -312,11 +314,11 @@ func (r *businessRepository) Update(business *models.Business, userID int64, tx 
 			return e.ErrEditConflict
 		} else if pqErr, ok := err.(*pq.Error); ok {
 			switch pqErr.Constraint {
-			case "unique_user_business_name":
+			case "unique_user_business_name_deleted":
 				return e.ErrDuplicateName
-			case "unique_user_business_cnpj":
+			case "unique_user_business_cnpj_deleted":
 				return e.ErrDuplicateCNPJ
-			case "unique_user_business_email":
+			case "unique_user_business_email_deleted":
 				return e.ErrDuplicateEmail
 			}
 		}

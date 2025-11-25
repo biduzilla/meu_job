@@ -13,6 +13,10 @@ type businessRouter struct {
 	m        middleware.MiddlewareInterface
 }
 
+type BusinessRouterInterface interface {
+	BusinessRoutes(r chi.Router)
+}
+
 func NewBusinessRouter(
 	business handlers.BusinessHandlerInterface,
 	m middleware.MiddlewareInterface,
