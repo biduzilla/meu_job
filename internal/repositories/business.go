@@ -23,6 +23,20 @@ func NewBusinessRepository(db *sql.DB) *BusinessRepository {
 	}
 }
 
+type BusinessRepositoryInterface interface {
+	GetByID(id int64, userID int64) (*models.Business, error)
+	GetAll(
+		name,
+		email,
+		cnpj string,
+		userID int64,
+		f filters.Filters,
+	) ([]*models.Business, filters.Metadata, error)
+	Insert(business *models.Business, userID int64, tx *sql.Tx) error
+	Update(business *models.Business, userID int64) error
+	Delete(id, userID int64) error
+}
+
 const SQLSelectDataBusiness = `
 		b.id,
 		b.name,
@@ -37,7 +51,7 @@ const SQLSelectDataBusiness = `
 		b.updated_at
 	`
 
-func ScanBusinessPage(r *sql.Rows, totalRecords *int, business *models.Business) error {
+func scanBusinessPage(r *sql.Rows, totalRecords *int, business *models.Business) error {
 	return r.Scan(
 		&totalRecords,
 		&business.ID,
@@ -66,7 +80,7 @@ func ScanBusinessPage(r *sql.Rows, totalRecords *int, business *models.Business)
 	)
 }
 
-func ScanBusiness(r *sql.Row, business *models.Business) error {
+func scanBusiness(r *sql.Row, business *models.Business) error {
 	err := r.Scan(
 		&business.ID,
 		&business.Name,
@@ -127,7 +141,7 @@ func (r *BusinessRepository) GetByID(id int64, userID int64) (*models.Business, 
 	defer cancel()
 
 	row := r.db.QueryRowContext(ctx, query, id, userID)
-	if err := ScanBusiness(row, &business); err != nil {
+	if err := scanBusiness(row, &business); err != nil {
 		return nil, err
 	}
 
@@ -185,7 +199,7 @@ func (r *BusinessRepository) GetAll(
 			User: &models.User{},
 		}
 
-		err := ScanBusinessPage(rows, &totalRecords, &business)
+		err := scanBusinessPage(rows, &totalRecords, &business)
 		if err != nil {
 			return nil, filters.Metadata{}, err
 		}
