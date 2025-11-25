@@ -2,7 +2,7 @@
 -- +goose StatementBegin
 ALTER TABLE users 
     ADD COLUMN created_by BIGINT,
-    ADD COLUMN updated_at TIMESTAMPTZ,
+    ADD COLUMN updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     ADD COLUMN updated_by BIGINT;
 -- +goose StatementEnd
 

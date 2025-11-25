@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash bytea NOT NULL,
     activated bool NOT NULL,
     deleted bool NOT NULL DEFAULT false,
-    role INTEGER NOT NULL CHECK (type IN (1, 2)),
+    role INTEGER NOT NULL CHECK (role IN (1, 2)),
     version integer NOT NULL DEFAULT 1
 );
 
