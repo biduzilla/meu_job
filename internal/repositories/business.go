@@ -312,11 +312,11 @@ func (r *businessRepository) Delete(id, userID int64, tx *sql.Tx) error {
 func (r *businessRepository) uniqueErrors(err error) error {
 	if pqErr, ok := err.(*pq.Error); ok {
 		switch pqErr.Constraint {
-		case "unique_user_business_name_deleted":
+		case "unique_business_name_deleted":
 			return e.ErrDuplicateName
-		case "unique_user_business_cnpj_deleted":
+		case "unique_business_cnpj_deleted":
 			return e.ErrDuplicateCNPJ
-		case "unique_user_business_email_deleted":
+		case "unique_business_email_deleted":
 			return e.ErrDuplicateEmail
 		}
 	}
