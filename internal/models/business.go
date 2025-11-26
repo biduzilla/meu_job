@@ -25,7 +25,7 @@ type BusinessDTO struct {
 	User  *UserDTO `json:"user"`
 }
 
-func (b *Business) ToDTO() *BusinessDTO {
+func (b Business) ToDTO() *BusinessDTO {
 	return &BusinessDTO{
 		ID:    &b.ID,
 		Name:  &b.Name,
@@ -36,7 +36,7 @@ func (b *Business) ToDTO() *BusinessDTO {
 	}
 }
 
-func (b *BusinessDTO) ToModel() *Business {
+func (b BusinessDTO) ToModel() *Business {
 	var model = &Business{}
 	if b.ID != nil {
 		model.ID = *b.ID

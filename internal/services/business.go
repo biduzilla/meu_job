@@ -16,8 +16,6 @@ type businessService struct {
 }
 
 type BusinessServiceInterface interface {
-	Save(b *models.Business, v *validator.Validator) error
-	FindByID(id, userID int64) (*models.Business, error)
 	FindAll(
 		name,
 		email,
@@ -25,7 +23,9 @@ type BusinessServiceInterface interface {
 		userID int64,
 		f filters.Filters,
 	) ([]*models.Business, filters.Metadata, error)
-	Update(b *models.Business, v *validator.Validator) error
+	Save(b *models.Business, userID int64, v *validator.Validator) error
+	FindByID(id, userID int64) (*models.Business, error)
+	Update(b *models.Business, userID int64, v *validator.Validator) error
 	Delete(id, userID int64) error
 }
 
@@ -39,7 +39,17 @@ func NewBusinessService(
 	}
 }
 
-func (s *businessService) Save(b *models.Business, v *validator.Validator) error {
+func (s *businessService) FindAll(
+	name,
+	email,
+	cnpj string,
+	userID int64,
+	f filters.Filters,
+) ([]*models.Business, filters.Metadata, error) {
+	return s.business.GetAll(name, email, cnpj, userID, f)
+}
+
+func (s *businessService) Save(b *models.Business, userID int64, v *validator.Validator) error {
 	return utils.RunInTx(s.db, func(tx *sql.Tx) error {
 		b.ValidateBusiness(v)
 		if !v.Valid() {
@@ -54,17 +64,7 @@ func (s *businessService) FindByID(id, userID int64) (*models.Business, error) {
 	return s.business.GetByID(id, userID)
 }
 
-func (s *businessService) FindAll(
-	name,
-	email,
-	cnpj string,
-	userID int64,
-	f filters.Filters,
-) ([]*models.Business, filters.Metadata, error) {
-	return s.business.GetAll(name, email, cnpj, userID, f)
-}
-
-func (s *businessService) Update(b *models.Business, v *validator.Validator) error {
+func (s *businessService) Update(b *models.Business, userID int64, v *validator.Validator) error {
 	return utils.RunInTx(s.db, func(tx *sql.Tx) error {
 		if b.ValidateBusiness(v); !v.Valid() {
 			return errors.ErrInvalidData

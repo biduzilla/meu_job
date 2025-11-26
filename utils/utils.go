@@ -11,6 +11,7 @@ import (
 	"meu_job/utils/validator"
 	"net/http"
 	"net/url"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -101,6 +102,14 @@ func ReadJSON(
 	}
 
 	return nil
+}
+
+func GetTypeName(v any) string {
+	t := reflect.TypeOf(v)
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	return strings.ToLower(t.Name())
 }
 
 func WriteJSON(w http.ResponseWriter, status int, data Envelope, headers http.Header) error {

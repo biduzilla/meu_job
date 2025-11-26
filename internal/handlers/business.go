@@ -12,16 +12,17 @@ import (
 )
 
 type businessHandler struct {
+	GenericHandlerInterface[models.Business, models.BusinessDTO]
 	business services.BusinessServiceInterface
 	errRsp   e.ErrorResponseInterface
 }
 
 type BusinessHandlerInterface interface {
 	FindAll(w http.ResponseWriter, r *http.Request)
-	FindByID(w http.ResponseWriter, r *http.Request)
-	Save(w http.ResponseWriter, r *http.Request)
-	Update(w http.ResponseWriter, r *http.Request)
-	Delete(w http.ResponseWriter, r *http.Request)
+	GenericHandlerInterface[
+		models.Business,
+		models.BusinessDTO,
+	]
 }
 
 func NewBusinessHandler(
@@ -29,8 +30,9 @@ func NewBusinessHandler(
 	errRsp e.ErrorResponseInterface,
 ) *businessHandler {
 	return &businessHandler{
-		business: business,
-		errRsp:   errRsp,
+		GenericHandlerInterface: NewGenericHandler(business, errRsp),
+		business:                business,
+		errRsp:                  errRsp,
 	}
 }
 
@@ -73,83 +75,83 @@ func (h *businessHandler) FindAll(w http.ResponseWriter, r *http.Request) {
 	respond(w, r, http.StatusOK, utils.Envelope{"business": business, "metadata": metadata}, nil, h.errRsp)
 }
 
-func (h *businessHandler) FindByID(w http.ResponseWriter, r *http.Request) {
-	id, ok := parseID(w, r, h.errRsp)
-	if !ok {
-		return
-	}
+// func (h *businessHandler) FindByID(w http.ResponseWriter, r *http.Request) {
+// 	id, ok := parseID(w, r, h.errRsp)
+// 	if !ok {
+// 		return
+// 	}
 
-	user := contexts.ContextGetUser(r)
-	business, err := h.business.FindByID(id, user.ID)
-	if err != nil {
-		h.errRsp.HandlerErrorResponse(w, r, err, nil)
-		return
-	}
-	respond(w, r, http.StatusOK, utils.Envelope{"business": business}, nil, h.errRsp)
-}
+// 	user := contexts.ContextGetUser(r)
+// 	business, err := h.business.FindByID(id, user.ID)
+// 	if err != nil {
+// 		h.errRsp.HandlerErrorResponse(w, r, err, nil)
+// 		return
+// 	}
+// 	respond(w, r, http.StatusOK, utils.Envelope{"business": business.ToDTO()}, nil, h.errRsp)
+// }
 
-func (h *businessHandler) Save(w http.ResponseWriter, r *http.Request) {
-	var dto models.BusinessDTO
-	if err := utils.ReadJSON(w, r, &dto); err != nil {
-		h.errRsp.BadRequestResponse(w, r, err)
-		return
-	}
+// func (h *businessHandler) Save(w http.ResponseWriter, r *http.Request) {
+// 	var dto models.BusinessDTO
+// 	if err := utils.ReadJSON(w, r, &dto); err != nil {
+// 		h.errRsp.BadRequestResponse(w, r, err)
+// 		return
+// 	}
 
-	v := validator.New()
-	user := contexts.ContextGetUser(r)
-	model := dto.ToModel()
-	if model.User == nil {
-		model.User = user
-	}
+// 	v := validator.New()
+// 	user := contexts.ContextGetUser(r)
+// 	model := dto.ToModel()
+// 	if model.User == nil {
+// 		model.User = user
+// 	}
 
-	if err := h.business.Save(model, v); err != nil {
-		h.errRsp.HandlerErrorResponse(w, r, err, v)
-		return
-	}
+// 	if err := h.business.Save(model, v); err != nil {
+// 		h.errRsp.HandlerErrorResponse(w, r, err, v)
+// 		return
+// 	}
 
-	respond(w, r, http.StatusCreated, utils.Envelope{"business": model}, nil, h.errRsp)
-}
+// 	respond(w, r, http.StatusCreated, utils.Envelope{"business": model.ToDTO()}, nil, h.errRsp)
+// }
 
-func (h *businessHandler) Update(w http.ResponseWriter, r *http.Request) {
-	var dto models.BusinessDTO
-	if err := utils.ReadJSON(w, r, &dto); err != nil {
-		h.errRsp.BadRequestResponse(w, r, err)
-		return
-	}
+// func (h *businessHandler) Update(w http.ResponseWriter, r *http.Request) {
+// 	var dto models.BusinessDTO
+// 	if err := utils.ReadJSON(w, r, &dto); err != nil {
+// 		h.errRsp.BadRequestResponse(w, r, err)
+// 		return
+// 	}
 
-	v := validator.New()
-	user := contexts.ContextGetUser(r)
-	model := dto.ToModel()
-	if model.User == nil {
-		model.User = user
-	}
+// 	v := validator.New()
+// 	user := contexts.ContextGetUser(r)
+// 	model := dto.ToModel()
+// 	if model.User == nil {
+// 		model.User = user
+// 	}
 
-	if err := h.business.Update(model, v); err != nil {
-		h.errRsp.HandlerErrorResponse(w, r, err, v)
-		return
-	}
+// 	if err := h.business.Update(model, v); err != nil {
+// 		h.errRsp.HandlerErrorResponse(w, r, err, v)
+// 		return
+// 	}
 
-	respond(w, r, http.StatusOK, utils.Envelope{"business": model}, nil, h.errRsp)
-}
+// 	respond(w, r, http.StatusOK, utils.Envelope{"business": model}, nil, h.errRsp)
+// }
 
-func (h *businessHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	id, ok := parseID(w, r, h.errRsp)
-	if !ok {
-		return
-	}
+// func (h *businessHandler) Delete(w http.ResponseWriter, r *http.Request) {
+// 	id, ok := parseID(w, r, h.errRsp)
+// 	if !ok {
+// 		return
+// 	}
 
-	user := contexts.ContextGetUser(r)
-	if err := h.business.Delete(id, user.ID); err != nil {
-		h.errRsp.HandlerErrorResponse(w, r, err, nil)
-		return
-	}
+// 	user := contexts.ContextGetUser(r)
+// 	if err := h.business.Delete(id, user.ID); err != nil {
+// 		h.errRsp.HandlerErrorResponse(w, r, err, nil)
+// 		return
+// 	}
 
-	respond(
-		w,
-		r,
-		http.StatusNoContent,
-		nil,
-		nil,
-		h.errRsp,
-	)
-}
+// 	respond(
+// 		w,
+// 		r,
+// 		http.StatusNoContent,
+// 		nil,
+// 		nil,
+// 		h.errRsp,
+// 	)
+// }
