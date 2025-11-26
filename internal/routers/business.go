@@ -33,7 +33,7 @@ func (b *businessRouter) BusinessRoutes(r chi.Router) {
 
 		r.Get("/{id}", b.business.FindByID)
 		r.Get("/", b.business.FindAll)
-		adminOnly := b.m.RequirePermission([]models.Role{models.BUSINESS})
+		adminOnly := b.m.RequirePermission([]models.Role{models.ADMIN})
 
 		r.With(adminOnly).Post("/add_user/{businessID}/{userID}", b.business.AddUserInBusiness)
 		r.With(adminOnly).Post("/", b.business.Save)

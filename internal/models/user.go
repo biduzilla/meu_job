@@ -15,6 +15,7 @@ type Role int8
 const (
 	USER Role = iota + 1
 	BUSINESS
+	ADMIN
 )
 
 type User struct {
@@ -54,6 +55,8 @@ func (r Role) String() string {
 		return "USER"
 	case BUSINESS:
 		return "BUSINESS"
+	case ADMIN:
+		return "ADMIN"
 	default:
 		return "UNKNOWN"
 	}
