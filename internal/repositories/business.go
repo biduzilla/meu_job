@@ -35,6 +35,7 @@ type BusinessRepositoryInterface interface {
 	Insert(business *models.Business, userID int64, tx *sql.Tx) error
 	Update(business *models.Business, userID int64, tx *sql.Tx) error
 	Delete(id, userID int64, tx *sql.Tx) error
+	AddUserInBusiness(businessID, userID, userLogadoID int64, tx *sql.Tx) error
 }
 
 const SQLSelectDataBusiness = `
@@ -53,7 +54,7 @@ const SQLSelectDataBusiness = `
 
 func scanBusinessPage(r *sql.Rows, totalRecords *int, business *models.Business) error {
 	return r.Scan(
-		&totalRecords,
+		totalRecords,
 		&business.ID,
 		&business.Name,
 		&business.CNPJ,
@@ -91,6 +92,39 @@ func scanBusiness(r *sql.Row, business *models.Business) error {
 			return err
 		}
 	}
+	return nil
+}
+
+func (r *businessRepository) AddUserInBusiness(businessID, userID, userLogadoID int64, tx *sql.Tx) error {
+	query := `
+		INSERT INTO business_users (business_id, user_id)
+		SELECT $1, $2
+		WHERE EXISTS (
+			SELECT 1
+			FROM business_users bu
+			WHERE 
+				bu.business_id = $1
+				AND bu.user_id = $3
+		)
+	`
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	res, err := tx.ExecContext(ctx, query, businessID, userID, userLogadoID)
+	if err != nil {
+		return err
+	}
+
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rows == 0 {
+		return e.ErrRecordNotFound
+	}
+
 	return nil
 }
 

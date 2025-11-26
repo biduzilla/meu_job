@@ -19,6 +19,7 @@ type businessHandler struct {
 
 type BusinessHandlerInterface interface {
 	FindAll(w http.ResponseWriter, r *http.Request)
+	AddUserInBusiness(w http.ResponseWriter, r *http.Request)
 	GenericHandlerInterface[
 		models.Business,
 		models.BusinessDTO,
@@ -34,6 +35,37 @@ func NewBusinessHandler(
 		business:                business,
 		errRsp:                  errRsp,
 	}
+}
+
+func (h *businessHandler) AddUserInBusiness(w http.ResponseWriter, r *http.Request) {
+	businessID, err := utils.ReadIntPathVariable(r, "businessID")
+	if err != nil {
+		h.errRsp.BadRequestResponse(w, r, err)
+		return
+	}
+
+	userID, err := utils.ReadIntPathVariable(r, "userID")
+	if err != nil {
+		h.errRsp.BadRequestResponse(w, r, err)
+		return
+	}
+
+	userLogado := contexts.ContextGetUser(r)
+
+	err = h.business.AddUserInBusiness(businessID, userID, userLogado.ID)
+	if err != nil {
+		h.errRsp.HandlerErrorResponse(w, r, err, nil)
+		return
+	}
+
+	respond(
+		w,
+		r,
+		http.StatusNoContent,
+		nil,
+		nil,
+		h.errRsp,
+	)
 }
 
 func (h *businessHandler) FindAll(w http.ResponseWriter, r *http.Request) {

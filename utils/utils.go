@@ -23,10 +23,14 @@ type Envelope map[string]any
 func ReadIntPathVariable(r *http.Request, key string) (int64, error) {
 	s := chi.URLParam(r, key)
 
+	if s == "" {
+		return 0, fmt.Errorf("missing path parameter: %s", key)
+	}
+
 	value, err := strconv.ParseInt(s, 10, 64)
 
 	if err != nil {
-		return 0, errors.New("invalid id parameter")
+		return 0, fmt.Errorf("invalid %s parameter", key)
 	}
 
 	return value, nil
@@ -138,17 +142,15 @@ func RunInTx(db *sql.DB, fn func(tx *sql.Tx) error) error {
 		return err
 	}
 
-	defer func() {
-		if p := recover(); p != nil {
-			_ = tx.Rollback()
-			panic(p)
-		}
-	}()
+	fnErr := fn(tx)
 
-	if err := fn(tx); err != nil {
-		_ = tx.Rollback()
-		return err
+	if fnErr == nil {
+		return tx.Commit()
 	}
 
-	return tx.Commit()
+	if rbErr := tx.Rollback(); rbErr != nil {
+		return errors.Join(fnErr, rbErr)
+	}
+
+	return fnErr
 }

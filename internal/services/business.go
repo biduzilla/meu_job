@@ -27,6 +27,7 @@ type BusinessServiceInterface interface {
 	FindByID(id, userID int64) (*models.Business, error)
 	Update(b *models.Business, userID int64, v *validator.Validator) error
 	Delete(id, userID int64) error
+	AddUserInBusiness(businessID, userID, userLogadoID int64) error
 }
 
 func NewBusinessService(
@@ -47,6 +48,12 @@ func (s *businessService) FindAll(
 	f filters.Filters,
 ) ([]*models.Business, filters.Metadata, error) {
 	return s.business.GetAll(name, email, cnpj, userID, f)
+}
+
+func (s *businessService) AddUserInBusiness(businessID, userID, userLogadoID int64) error {
+	return utils.RunInTx(s.db, func(tx *sql.Tx) error {
+		return s.business.AddUserInBusiness(businessID, userID, userLogadoID, tx)
+	})
 }
 
 func (s *businessService) Save(b *models.Business, userID int64, v *validator.Validator) error {
