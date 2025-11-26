@@ -56,7 +56,7 @@ func (s *businessService) Save(b *models.Business, userID int64, v *validator.Va
 			return errors.ErrInvalidData
 		}
 
-		return s.business.Insert(b, b.User.ID, tx)
+		return s.business.Insert(b, userID, tx)
 	})
 }
 
@@ -70,7 +70,7 @@ func (s *businessService) Update(b *models.Business, userID int64, v *validator.
 			return errors.ErrInvalidData
 		}
 
-		return s.business.Update(b, b.User.ID, tx)
+		return s.business.Update(b, userID, tx)
 	})
 }
 

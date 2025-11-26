@@ -65,18 +65,6 @@ func scanBusinessPage(r *sql.Rows, totalRecords *int, business *models.Business)
 		&business.CreatedAt,
 		&business.UpdatedBy,
 		&business.UpdatedAt,
-		&business.User.ID,
-		&business.User.Name,
-		&business.User.Phone,
-		&business.User.Email,
-		&business.User.Cod,
-		&business.User.Password.Hash,
-		&business.User.Activated,
-		&business.User.Version,
-		&business.User.CreatedBy,
-		&business.User.CreatedAt,
-		&business.User.UpdatedBy,
-		&business.User.UpdatedAt,
 	)
 }
 
@@ -93,18 +81,6 @@ func scanBusiness(r *sql.Row, business *models.Business) error {
 		&business.CreatedAt,
 		&business.UpdatedBy,
 		&business.UpdatedAt,
-		&business.User.ID,
-		&business.User.Name,
-		&business.User.Phone,
-		&business.User.Email,
-		&business.User.Cod,
-		&business.User.Password.Hash,
-		&business.User.Activated,
-		&business.User.Version,
-		&business.User.CreatedBy,
-		&business.User.CreatedAt,
-		&business.User.UpdatedBy,
-		&business.User.UpdatedAt,
 	)
 
 	if err != nil {
@@ -121,21 +97,22 @@ func scanBusiness(r *sql.Row, business *models.Business) error {
 func (r *businessRepository) GetByID(id int64, userID int64) (*models.Business, error) {
 	query := fmt.Sprintf(`
 	select 
-		%s,
 		%s
 	from business b
 	left join users u on b.user_id = u.id
 	where 
 		b.id = $1
-		and b.user_id = $2
 		and b.deleted = false
-	`, SQLSelectDataBusiness,
-		SQLSelectDataUser,
-	)
+		and exists (
+			select 1
+			from business_users bu
+			where 
+				bu.business_id = b.id
+				and bu.user_id = $2
+		)
+	`, SQLSelectDataBusiness)
 
-	business := models.Business{
-		User: &models.User{},
-	}
+	business := models.Business{}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
@@ -156,32 +133,25 @@ func (r *businessRepository) GetAll(
 	f filters.Filters,
 ) ([]*models.Business, filters.Metadata, error) {
 	query := fmt.Sprintf(`
-	select
-		count(b) over,
-		%s,
-		%s
+		select
+			count(*) over(),
+			%s
 		from business b
-		left join users u on b.user_id = u.id
-		where 
-			(to_tsvector('simple', name) @@ plainto_tsquery('simple', $1) OR $1 = '')
-			and (to_tsvector('simple', email) @@ plainto_tsquery('simple', $2) OR $2 = '')
-			and (to_tsvector('simple', cnpj) @@ plainto_tsquery('simple', $3) OR $3 = '')
-			and b.user_id = $4
+		join business_users bu on bu.business_id = b.id
+		where
+			bu.user_id = $4
+			and (to_tsvector('simple', b.name) @@ plainto_tsquery('simple', $1) OR $1 = '')
+			and (to_tsvector('simple', b.email) @@ plainto_tsquery('simple', $2) OR $2 = '')
+			and (to_tsvector('simple', b.cnpj) @@ plainto_tsquery('simple', $3) OR $3 = '')
 			and b.deleted = false
-		order by 
-			%s %s,
-			id asc
-		limit $5 offset $6			
-	`,
-		SQLSelectDataBusiness,
-		SQLSelectDataUser,
-		f.SortColumn(),
-		f.SortDirection())
+		order by %s %s, b.id
+		limit $5 offset $6
+	`, SQLSelectDataBusiness, f.SortColumn(), f.SortDirection())
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	args := []any{name, email, cnpj, f.Limit(), f.Offset()}
+	args := []any{name, email, cnpj, userID, f.Limit(), f.Offset()}
 
 	rows, err := r.db.QueryContext(ctx, query, args...)
 
@@ -195,9 +165,7 @@ func (r *businessRepository) GetAll(
 	businessList := []*models.Business{}
 
 	for rows.Next() {
-		business := models.Business{
-			User: &models.User{},
-		}
+		business := models.Business{}
 
 		err := scanBusinessPage(rows, &totalRecords, &business)
 		if err != nil {
@@ -217,15 +185,14 @@ func (r *businessRepository) GetAll(
 
 func (r *businessRepository) Insert(business *models.Business, userID int64, tx *sql.Tx) error {
 	query := `
-	insert into(
+	insert into business (
 		name,
 		cnpj,
 		email,
 		phone,
-		user_id,
-		created_by	
+		created_by
 	)
-	values ($1,$2,$3,$4,$5,$6)
+	values ($1,$2,$3,$4,$5)
 	returning 
 		id, 
 		created_at,
@@ -237,7 +204,6 @@ func (r *businessRepository) Insert(business *models.Business, userID int64, tx 
 		business.CNPJ,
 		business.Email,
 		business.Phone,
-		userID,
 		userID,
 	}
 
@@ -251,19 +217,14 @@ func (r *businessRepository) Insert(business *models.Business, userID int64, tx 
 	)
 
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return e.ErrEditConflict
-		} else if pqErr, ok := err.(*pq.Error); ok {
-			switch pqErr.Constraint {
-			case "unique_user_business_name_deleted":
-				return e.ErrDuplicateName
-			case "unique_user_business_cnpj_deleted":
-				return e.ErrDuplicateCNPJ
-			case "unique_user_business_email_deleted":
-				return e.ErrDuplicateEmail
-			}
-		}
+		return r.uniqueErrors(err)
+	}
 
+	_, err = tx.ExecContext(ctx, `
+    INSERT INTO business_users (business_id, user_id)
+    VALUES ($1, $2)
+	`, business.ID, userID)
+	if err != nil {
 		return err
 	}
 
@@ -279,14 +240,19 @@ func (r *businessRepository) Update(business *models.Business, userID int64, tx 
 		email = $3,
 		phone = $4,
 		updated_by = $5,	
-		updated_at = $6,
+		updated_at=now(),
 		version = version + 1	
-	)
 	where
-		id = $7
-		and user_id = $8
+		id = $6
+		and exists(
+			select 1 
+			from business_users bu 
+			where 
+				bu.business_id=$6 
+				and bu.user_id=$5
+		)
 		and deleted = false
-		and version = $9
+		and version = $7
 	returning version
 	`
 
@@ -296,9 +262,7 @@ func (r *businessRepository) Update(business *models.Business, userID int64, tx 
 		business.Email,
 		business.Phone,
 		userID,
-		time.Now(),
 		business.ID,
-		userID,
 		business.Version,
 	}
 
@@ -309,53 +273,52 @@ func (r *businessRepository) Update(business *models.Business, userID int64, tx 
 		&business.Version,
 	)
 
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return e.ErrEditConflict
-		} else if pqErr, ok := err.(*pq.Error); ok {
-			switch pqErr.Constraint {
-			case "unique_user_business_name_deleted":
-				return e.ErrDuplicateName
-			case "unique_user_business_cnpj_deleted":
-				return e.ErrDuplicateCNPJ
-			case "unique_user_business_email_deleted":
-				return e.ErrDuplicateEmail
-			}
-		}
-
-		return err
-	}
-	return nil
+	return r.uniqueErrors(err)
 }
 
 func (r *businessRepository) Delete(id, userID int64, tx *sql.Tx) error {
 	query := `
-	UPDATE business
-	SET
-		deleted = true
-	WHERE
-		id = $1
-		AND user_id = $2
-		AND deleted = false
+		update business
+		set 
+			deleted = true,
+			updated_by = $2,
+			updated_at = NOW(),
+			version = version + 1
+		where id = $1
+		and exists (
+			select 1 from business_users 
+			where business_id = $1 and user_id = $2
+		)
+		and deleted = false
+		returning id
 	`
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	result, err := tx.ExecContext(ctx, query, id, userID)
+	var returnedID int64
 
+	err := tx.QueryRowContext(ctx, query, id, userID).Scan(&returnedID)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return e.ErrRecordNotFound
+		}
 		return err
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-
-	if rowsAffected == 0 {
-		return e.ErrRecordNotFound
 	}
 
 	return nil
+}
+
+func (r *businessRepository) uniqueErrors(err error) error {
+	if pqErr, ok := err.(*pq.Error); ok {
+		switch pqErr.Constraint {
+		case "unique_user_business_name_deleted":
+			return e.ErrDuplicateName
+		case "unique_user_business_cnpj_deleted":
+			return e.ErrDuplicateCNPJ
+		case "unique_user_business_email_deleted":
+			return e.ErrDuplicateEmail
+		}
+	}
+	return err
 }

@@ -12,17 +12,15 @@ type Business struct {
 	CNPJ  string
 	Email string
 	Phone string
-	User  *User
 	BaseModel
 }
 
 type BusinessDTO struct {
-	ID    *int64   `json:"business_id"`
-	Name  *string  `json:"name"`
-	CNPJ  *string  `json:"cnpj"`
-	Email *string  `json:"email"`
-	Phone *string  `json:"phone"`
-	User  *UserDTO `json:"user"`
+	ID    *int64  `json:"business_id"`
+	Name  *string `json:"name"`
+	CNPJ  *string `json:"cnpj"`
+	Email *string `json:"email"`
+	Phone *string `json:"phone"`
 }
 
 func (b Business) ToDTO() *BusinessDTO {
@@ -32,7 +30,6 @@ func (b Business) ToDTO() *BusinessDTO {
 		CNPJ:  &b.CNPJ,
 		Email: &b.Email,
 		Phone: &b.Phone,
-		User:  b.User.ToDTO(),
 	}
 }
 
@@ -57,9 +54,6 @@ func (b BusinessDTO) ToModel() *Business {
 		model.Email = *b.Email
 	}
 
-	if b.User != nil {
-		model.User = b.User.ToModel()
-	}
 	return model
 }
 
