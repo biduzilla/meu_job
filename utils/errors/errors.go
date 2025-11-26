@@ -20,6 +20,7 @@ var (
 	ErrInvalidCredentials    = errors.New("invalid authentication credentials")
 	ErrInactiveAccount       = errors.New("your user account must be activated to access this resource")
 	ErrStartDateAfterEndDate = errors.New("start date must be before end date")
+	ErrInvalidRole           = errors.New("invalid role")
 )
 
 type errorResponse struct {
@@ -32,6 +33,7 @@ type ErrorResponseInterface interface {
 	InactiveAccountResponse(w http.ResponseWriter, r *http.Request)
 	InvalidAuthenticationTokenResponse(w http.ResponseWriter, r *http.Request)
 	InvalidCredentialsResponse(w http.ResponseWriter, r *http.Request)
+	InvalidRoleResponse(w http.ResponseWriter, r *http.Request)
 	RateLimitExceededResponse(w http.ResponseWriter, r *http.Request)
 	ServerErrorResponse(w http.ResponseWriter, r *http.Request, err error)
 	NotFoundResponse(w http.ResponseWriter, r *http.Request)
@@ -76,6 +78,9 @@ func (e *errorResponse) HandlerErrorResponse(w http.ResponseWriter, r *http.Requ
 	case errors.Is(err, ErrInactiveAccount):
 		e.InactiveAccountResponse(w, r)
 
+	case errors.Is(err, ErrInactiveAccount):
+		e.InvalidRoleResponse(w, r)
+
 	default:
 		e.ServerErrorResponse(w, r, err)
 	}
@@ -92,6 +97,11 @@ func (e *errorResponse) AuthenticationRequiredResponse(w http.ResponseWriter, r 
 }
 func (e *errorResponse) InactiveAccountResponse(w http.ResponseWriter, r *http.Request) {
 	message := "your user account must be activated to access this resource"
+	e.errorResponse(w, r, http.StatusForbidden, message)
+}
+
+func (e *errorResponse) InvalidRoleResponse(w http.ResponseWriter, r *http.Request) {
+	message := "Your user account does not have access to this feature."
 	e.errorResponse(w, r, http.StatusForbidden, message)
 }
 

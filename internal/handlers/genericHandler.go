@@ -79,7 +79,7 @@ func (h *genericHandler[T, D]) Save(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respond(w, r, http.StatusCreated, utils.Envelope{utils.GetTypeName(model): (*model).ToDTO}, nil, h.errRsp)
+	respond(w, r, http.StatusCreated, utils.Envelope{utils.GetTypeName(model): (*model).ToDTO()}, nil, h.errRsp)
 }
 
 func (h *genericHandler[T, D]) Update(w http.ResponseWriter, r *http.Request) {
@@ -98,7 +98,7 @@ func (h *genericHandler[T, D]) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respond(w, r, http.StatusOK, utils.Envelope{utils.GetTypeName(model): (*model).ToDTO}, nil, h.errRsp)
+	respond(w, r, http.StatusOK, utils.Envelope{utils.GetTypeName(model): (*model).ToDTO()}, nil, h.errRsp)
 }
 
 func (h *genericHandler[T, D]) Delete(w http.ResponseWriter, r *http.Request) {

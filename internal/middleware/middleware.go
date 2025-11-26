@@ -160,7 +160,7 @@ func (m *Middleware) RequirePermission(roles []models.Role) func(http.Handler) h
 			user := contexts.ContextGetUser(r)
 
 			if !slices.Contains(roles, user.Role) {
-				m.errRsp.InactiveAccountResponse(w, r)
+				m.errRsp.InvalidRoleResponse(w, r)
 				return
 			}
 

@@ -99,7 +99,6 @@ func (r *businessRepository) GetByID(id int64, userID int64) (*models.Business, 
 	select 
 		%s
 	from business b
-	left join users u on b.user_id = u.id
 	where 
 		b.id = $1
 		and b.deleted = false

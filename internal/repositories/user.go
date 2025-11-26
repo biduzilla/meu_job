@@ -36,7 +36,8 @@ const SqlSelectUser = `
 		cod, 
 		password_hash, 
 		activated, 
-		version
+		version,
+		role
 	FROM users
 `
 
@@ -105,6 +106,7 @@ func (r *UserRepository) getUserByQuery(query string, args ...any) (*models.User
 		&user.Password.Hash,
 		&user.Activated,
 		&user.Version,
+		&user.Role,
 	)
 
 	if err != nil {
@@ -152,8 +154,8 @@ func (r *UserRepository) GetByEmail(email string) (*models.User, error) {
 
 func (r *UserRepository) Insert(tx *sql.Tx, user *models.User) error {
 	query := `
-	INSERT INTO users (name, email, phone,cod, password_hash, activated,deleted)
-	VALUES ($1, $2, $3, $4, $5, $6,false)
+	INSERT INTO users (name, email, phone,cod, password_hash, activated,deleted,role)
+	VALUES ($1, $2, $3, $4, $5, $6,false,1)
 	RETURNING id, created_at, version
 	`
 	args := []any{

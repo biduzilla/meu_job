@@ -139,10 +139,14 @@ func RunInTx(db *sql.DB, fn func(tx *sql.Tx) error) error {
 	}
 
 	defer func() {
-		_ = tx.Rollback()
+		if p := recover(); p != nil {
+			_ = tx.Rollback()
+			panic(p)
+		}
 	}()
 
 	if err := fn(tx); err != nil {
+		_ = tx.Rollback()
 		return err
 	}
 
